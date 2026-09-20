@@ -14,16 +14,18 @@
   Flow:
     1. ESP32 detects sustained loud sound locally
     2. Servo starts rocking the cradle immediately
-    3. Supabase INSERT fires in the background so
-       the separate UI updates in realtime
-    4. After 15 s the servo returns to center
+    3. Supabase INSERT fires after the first sweep
+       (500 ms timeout — never blocks the cradle)
+    4. Separate UI receives the Realtime event
+    5. After 15 s the servo returns to center
 
   Safety:
-    A hardware EMERGENCY STOP button on
-    ESTOP_PIN halts the servo instantly via an
-    interrupt. This is a software interlock only —
-    always add an independent hardware power-cut
-    mechanism before deploying on a real cradle.
+    Emergency stop button on GPIO 32 (not GPIO 34 —
+    GPIO 34 has no internal pull-up and will float).
+    Pressing the button latches the system halted
+    until the ESP32 is power-cycled. This is a
+    software interlock only — always add independent
+    hardware power-cut for a real deployment.
 
 *************************************************/
 
@@ -110,11 +112,13 @@ Servo myServo;
 // =============================================
 // EMERGENCY STOP
 // Wire a normally-open push button between
-// ESTOP_PIN and GND. The internal pull-up is
+// GPIO 32 and GND. The internal pull-up is
 // enabled; pressing the button pulls the pin LOW.
 // An interrupt halts the servo within microseconds.
+// Do NOT use GPIO 34 — it is input-only and has
+// no internal pull-up (pin will float).
 // =============================================
-#define ESTOP_PIN 34   // any input-only GPIO works
+#define ESTOP_PIN 32   // GPIO34 has no internal pull-up; GPIO32 does
 
 volatile bool eStop = false;
 
@@ -240,10 +244,10 @@ bool sendCryToSupabase() {
     return false;
   }
 
-  // 3-second timeout so a slow connection does
-  // not block the loop for a dangerous period.
+  // 500 ms timeout — keeps the Supabase call short enough
+  // that it cannot meaningfully delay the rocking sequence.
   HTTPClient http;
-  http.setTimeout(3000);
+  http.setTimeout(500);
 
   String url = String(SUPABASE_URL) + "/rest/v1/baby_events";
   http.begin(url);
@@ -412,32 +416,24 @@ void activateTharattu() {
   Serial.println(">>> KUNJU KARAYUNNU! <<<");
 
   showCryDetected();
-
-  // 2-second alert window — servo not moving yet,
-  // web server stays responsive
-  unsigned long alertStart = millis();
-  while (millis() - alertStart < 2000) {
-    if (eStop) { haltServo(); return; }
-    server.handleClient();
-    delay(1);
-  }
-
   showRocking();
   Serial.println("THARATTU.DROP ACTIVATED — rocking for 15 s");
 
-  // ── Start rocking, THEN notify Supabase ──
-  // One sweep first so the cradle responds before
-  // the HTTP request goes out.
+  // ── Servo starts immediately ──
+  // Physical response has no dependency on the network.
+  // One sweep runs first, then Supabase is notified,
+  // then rocking continues for the rest of the 15 s window.
   if (!rockServo()) { haltServo(); return; }
 
-  // Fire Supabase in the same task (synchronous),
-  // but with a hard 3-second timeout so it cannot
-  // block the loop for longer than that.
+  // Notify Supabase after the cradle has already started moving.
+  // 500 ms timeout — fast enough for a demo, short enough that
+  // a slow connection cannot meaningfully delay rocking.
   sendCryToSupabase();
 
-  // Continue rocking for the remainder of 15 s
+  // Rock for the remainder of 15 s
+  // (1 sweep already done above, so ~14 s remaining)
   unsigned long rockStart = millis();
-  while (millis() - rockStart < 13000) {   // 15 s total: 1 sweep + 1 s alert + ~1 s HTTP
+  while (millis() - rockStart < 14000) {
     if (eStop) { haltServo(); return; }
     if (!rockServo()) { haltServo(); return; }
   }
