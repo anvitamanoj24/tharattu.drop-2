@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tharattu.drop()</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0f;
+      --surface: #1a1a1f;
+      --surface2: #24242b;
+      --accent: #7c6af7;
+      --accent2: #f76a8a;
+      --text: #e8e8f0;
+      --muted: #7a7a8a;
+      --green: #4ade80;
+      --radius: 16px;
+      --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+      transition: background var(--transition);
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+    }
+
+    .logo span { color: var(--text); }
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--surface);
+      border: 1px solid var(--surface2);
+      border-radius: 99px;
+      padding: 6px 14px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+
+    .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Main card ── */
+    .main-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--surface2);
+      overflow: hidden;
+      margin-bottom: 16px;
+      transition: border-color var(--transition);
+    }
+
+    .main-card.triggered {
+      border-color: var(--accent2);
+      box-shadow: 0 0 40px rgba(247, 106, 138, 0.18);
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: var(--surface2);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    #status-label {
+      color: var(--green);
+      transition: color var(--transition);
+    }
+
+    /* Visualiser box */
+    .visual-box {
+      height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      transition: background var(--transition);
+    }
+
+    .visual-box .icon {
+      font-size: 3.8rem;
+      transition: transform 0.15s;
+      user-select: none;
+    }
+
+    .visual-box .state-text {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      transition: color var(--transition);
+    }
+
+    .visual-box .sub-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    /* Strobe overlay */
+    #strobe-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.05s;
+    }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--surface2);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+
+    .stat-card .val {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-card .lbl {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+
+    /* ── Audio card ── */
+    .audio-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--surface2);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .audio-card .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .track-row .track-icon {
+      font-size: 1.6rem;
+      flex-shrink: 0;
+    }
+
+    .track-info { flex: 1; min-width: 0; }
+
+    .track-info .track-name {
+      font-size: 0.92rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-info .track-sub {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .enable-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--surface2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .enable-btn:hover { background: #2e2e38; border-color: var(--accent); }
+    .enable-btn.active { border-color: var(--green); color: var(--green); }
+
+    /* ── Manual test card ── */
+    .test-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--surface2);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .test-card .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .test-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .test-btn:hover { opacity: 0.88; }
+    .test-btn:active { transform: scale(0.98); }
+
+    /* ── Alert overlay ── */
+    #alert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      text-align: center;
+      padding: 32px;
+    }
+
+    #alert-overlay.show { display: flex; }
+
+    #alert-overlay .alert-icon { font-size: 4rem; animation: bounce 0.6s infinite alternate; }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-12px); }
+    }
+
+    #alert-overlay h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #fff;
+    }
+
+    #alert-overlay p { color: #ccc; font-size: 0.95rem; }
+
+    .dismiss-btn {
+      margin-top: 8px;
+      padding: 13px 36px;
+      background: var(--accent2);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .dismiss-btn:hover { opacity: 0.85; }
+
+    /* ── Footer note ── */
+    .footer-note {
+      width: 100%;
+      max-width: 480px;
+      font-size: 0.73rem;
+      color: var(--muted);
+      line-height: 1.6;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* ── TRIGGERED state overrides ── */
+    body.triggered { --bg: #1a0810; }
+    body.triggered .visual-box { background: rgba(247, 106, 138, 0.06); }
+    body.triggered .visual-box .state-text { color: var(--accent2); }
+    body.triggered #status-label { color: var(--accent2); }
+  </style>
+</head>
+<body>
+
+  <!-- Strobe flash overlay -->
+  <div id="strobe-overlay"></div>
+
+  <!-- Alert overlay -->
+  <div id="alert-overlay">
+    <div class="alert-icon">👶</div>
+    <h2>Cry detected — rocking now</h2>
+    <p>The cradle is responding. Lullaby is playing.</p>
+    <button class="dismiss-btn" onclick="dismissAlert()">Dismiss</button>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">tharattu<span>.drop()</span></div>
+    <div class="pill">
+      <span class="dot" id="conn-dot"></span>
+      <span id="conn-label">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- Main status card -->
+  <div class="main-card" id="main-card">
+    <div class="status-bar">
+      <span>Room status</span>
+      <span id="status-label">Listening</span>
+    </div>
+    <div class="visual-box" id="visual-box">
+      <div class="icon" id="visual-icon">🎵</div>
+      <div class="state-text" id="state-text">All quiet</div>
+      <div class="sub-text" id="sub-text">Monitoring for sounds…</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="val" id="mic-val">—</div>
+      <div class="lbl">Mic level</div>
+    </div>
+    <div class="stat-card">
+      <div class="val" id="rocks-val">0</div>
+      <div class="lbl">Rocks today</div>
+    </div>
+  </div>
+
+  <!-- Audio card -->
+  <div class="audio-card">
+    <div class="section-label">Soothing track</div>
+    <div class="track-row">
+      <div class="track-icon">🎶</div>
+      <div class="track-info">
+        <div class="track-name">Lullaby — Auto-play on cry</div>
+        <div class="track-sub" id="audio-status">Audio not yet enabled</div>
+      </div>
+      <button class="enable-btn" id="enable-btn" onclick="enableAudio()">
+        ♪ Enable
+      </button>
+    </div>
+    <!-- Embedded base64 audio so it works offline too -->
+    <audio id="lullaby" loop
+      src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//sQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV">
+    </audio>
+  </div>
+
+  <!-- Manual test -->
+  <div class="test-card">
+    <div class="section-label">Manual test</div>
+    <button class="test-btn" onclick="simulateCry()">Simulate cry detected</button>
+  </div>
+
+  <!-- Footer -->
+  <p class="footer-note">
+    Connects to Supabase Realtime for live cry events from the ESP32.
+    Lullaby is embedded as base64 — playback and the alert screen work even with no internet.
+  </p>
+
+<script>
+  // =============================================
+  // SUPABASE CONFIG — replace these two values
+  // =============================================
+  const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+
+  // =============================================
+  // STATE
+  // =============================================
+  let audioEnabled = false;
+  let rocksToday = 0;
+  let isTriggered = false;
+  let strobeInterval = null;
+  let supabase = null;
+
+  // =============================================
+  // SUPABASE INIT & REALTIME
+  // =============================================
+  function initSupabase() {
+    if (SUPABASE_URL === "https://YOUR_PROJECT.supabase.co") {
+      // Running without config — fall back gracefully
+      setConnStatus(false, "No config");
+      return;
+    }
+
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      supabase
+        .channel("baby-events")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "baby_events" },
+          (payload) => {
+            console.log("Realtime event:", payload.new);
+            if (payload.new.event_type === "CRY") {
+              triggerCryUI();
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            setConnStatus(true, "Live");
+          } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+            setConnStatus(false, "Disconnected");
+          }
+        });
+    } catch (e) {
+      console.error("Supabase init failed:", e);
+      setConnStatus(false, "Error");
+    }
+  }
+
+  function setConnStatus(live, label) {
+    document.getElementById("conn-dot").className = "dot" + (live ? " live" : "");
+    document.getElementById("conn-label").textContent = label;
+  }
+
+  // =============================================
+  // CRY TRIGGER
+  // =============================================
+  function triggerCryUI() {
+    if (isTriggered) return;
+    isTriggered = true;
+    rocksToday++;
+
+    document.getElementById("rocks-val").textContent = rocksToday;
+    document.getElementById("status-label").textContent = "KUNJU KARAYUNNU!";
+    document.getElementById("state-text").textContent = "Cry detected!";
+    document.getElementById("sub-text").textContent = "Cradle is rocking…";
+    document.getElementById("visual-icon").textContent = "😢";
+    document.getElementById("mic-val").textContent = "↑↑";
+
+    document.getElementById("main-card").classList.add("triggered");
+    document.body.classList.add("triggered");
+
+    // Show alert overlay
+    document.getElementById("alert-overlay").classList.add("show");
+
+    // Start strobe
+    startStrobe();
+
+    // Play lullaby
+    if (audioEnabled) {
+      const audio = document.getElementById("lullaby");
+      if (audio.paused) audio.play().catch(() => {});
+    }
+
+    // Auto-reset after 15 s (matches the ESP32 rocking window)
+    setTimeout(resetUI, 15000);
+  }
+
+  function resetUI() {
+    isTriggered = false;
+    stopStrobe();
+
+    document.getElementById("status-label").textContent = "Listening";
+    document.getElementById("state-text").textContent = "All quiet";
+    document.getElementById("sub-text").textContent = "Monitoring for sounds…";
+    document.getElementById("visual-icon").textContent = "🎵";
+    document.getElementById("mic-val").textContent = "—";
+
+    document.getElementById("main-card").classList.remove("triggered");
+    document.body.classList.remove("triggered");
+    document.getElementById("alert-overlay").classList.remove("show");
+
+    const audio = document.getElementById("lullaby");
+    if (!audio.paused) { audio.pause(); audio.currentTime = 0; }
+  }
+
+  function dismissAlert() {
+    document.getElementById("alert-overlay").classList.remove("show");
+    // Don't reset the full UI — cradle may still be rocking
+  }
+
+  // =============================================
+  // STROBE EFFECT
+  // =============================================
+  const strobeColors = [
+    "#ff4757", "#2ed573", "#1e90ff", "#ffeb3b",
+    "#ff6b81", "#7bed9f", "#70a1ff", "#eccc68"
+  ];
+
+  function startStrobe() {
+    const overlay = document.getElementById("strobe-overlay");
+    strobeInterval = setInterval(() => {
+      const color = strobeColors[Math.floor(Math.random() * strobeColors.length)];
+      overlay.style.background = color;
+      overlay.style.opacity = "0.18";
+      setTimeout(() => { overlay.style.opacity = "0"; }, 80);
+    }, 180);
+  }
+
+  function stopStrobe() {
+    clearInterval(strobeInterval);
+    strobeInterval = null;
+    const overlay = document.getElementById("strobe-overlay");
+    overlay.style.opacity = "0";
+  }
+
+  // =============================================
+  // AUDIO
+  // =============================================
+  function enableAudio() {
+    const audio = document.getElementById("lullaby");
+    audio.play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audioEnabled = true;
+        document.getElementById("audio-status").textContent = "Ready — will play on cry";
+        document.getElementById("enable-btn").classList.add("active");
+        document.getElementById("enable-btn").textContent = "✓ Enabled";
+      })
+      .catch(() => {
+        document.getElementById("audio-status").textContent = "Could not enable — try again";
+      });
+  }
+
+  // =============================================
+  // MANUAL TEST (simulate an ESP32 CRY event)
+  // =============================================
+  function simulateCry() {
+    triggerCryUI();
+  }
+
+  // =============================================
+  // BOOT
+  // =============================================
+  initSupabase();
+</script>
+</body>
+</html>
