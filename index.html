@@ -18,6 +18,8 @@
       --text: #e8e8f0;
       --muted: #7a7a8a;
       --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
       --radius: 16px;
       --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -41,7 +43,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 32px;
+      margin-bottom: 16px;
     }
 
     .logo {
@@ -50,7 +52,6 @@
       letter-spacing: 0.04em;
       color: var(--accent);
     }
-
     .logo span { color: var(--text); }
 
     .pill {
@@ -71,13 +72,95 @@
       border-radius: 50%;
       background: var(--muted);
       transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .dot.live   { background: var(--green);  box-shadow: 0 0 6px var(--green);  animation: blink 2s infinite; }
+    .dot.warn   { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); animation: blink 1s infinite; }
+    .dot.error  { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+    .dot.local  { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: blink 2s infinite; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
     }
 
-    .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    /* ── Realtime warning banner ── */
+    #rt-banner {
+      display: none;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 12px;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--yellow);
+    }
+    #rt-banner.error {
+      background: rgba(248, 113, 113, 0.1);
+      border-color: rgba(248, 113, 113, 0.35);
+      color: var(--red);
+    }
+    #rt-banner strong { display: block; margin-bottom: 3px; font-size: 0.82rem; }
+    #rt-banner.show { display: block; }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.4; }
+    /* ── Local ESP32 config card ── */
+    .config-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--surface2);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .config-card .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .config-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .config-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 0.85rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .config-row input:focus { border-color: var(--accent); }
+    .config-row input::placeholder { color: var(--muted); }
+    .connect-btn {
+      background: var(--surface2);
+      border: 1px solid #444;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .connect-btn:hover { border-color: var(--accent); background: #2a2a34; }
+    .connect-btn.active { border-color: var(--accent); color: var(--accent); }
+    #local-status {
+      margin-top: 8px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      min-height: 1.1em;
     }
 
     /* ── Main card ── */
@@ -89,15 +172,13 @@
       border: 1px solid var(--surface2);
       overflow: hidden;
       margin-bottom: 16px;
-      transition: border-color var(--transition);
+      transition: border-color var(--transition), box-shadow var(--transition);
     }
-
     .main-card.triggered {
       border-color: var(--accent2);
       box-shadow: 0 0 40px rgba(247, 106, 138, 0.18);
     }
 
-    /* Status bar */
     .status-bar {
       display: flex;
       justify-content: space-between;
@@ -110,13 +191,8 @@
       text-transform: uppercase;
       color: var(--muted);
     }
+    #status-label { color: var(--green); transition: color var(--transition); }
 
-    #status-label {
-      color: var(--green);
-      transition: color var(--transition);
-    }
-
-    /* Visualiser box */
     .visual-box {
       height: 220px;
       display: flex;
@@ -128,36 +204,38 @@
       overflow: hidden;
       transition: background var(--transition);
     }
-
-    .visual-box .icon {
-      font-size: 3.8rem;
-      transition: transform 0.15s;
-      user-select: none;
-    }
-
+    .visual-box .icon { font-size: 3.8rem; user-select: none; }
     .visual-box .state-text {
-      font-size: 1.4rem;
-      font-weight: 700;
+      font-size: 1.4rem; font-weight: 700;
       letter-spacing: 0.03em;
       transition: color var(--transition);
     }
+    .visual-box .sub-text { font-size: 0.82rem; color: var(--muted); }
 
-    .visual-box .sub-text {
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-
-    /* Strobe overlay */
+    /* ── Ambient strobe overlay ──
+       Uses a radial gradient + backdrop-filter blur
+       for a spatial glow rather than a flat flash.
+       The overlay sits above content but below the
+       alert modal (z-index 10 vs 100).              */
     #strobe-overlay {
       position: fixed;
       inset: 0;
       pointer-events: none;
       z-index: 10;
       opacity: 0;
-      transition: opacity 0.05s;
+      border-radius: 0;
+      /* backdrop-filter adds depth; graceful no-op on unsupported browsers */
+      backdrop-filter: blur(0px) brightness(1);
+      -webkit-backdrop-filter: blur(0px) brightness(1);
+      transition: opacity 0.12s ease-out,
+                  backdrop-filter 0.12s ease-out,
+                  -webkit-backdrop-filter 0.12s ease-out;
+      background: radial-gradient(ellipse at 50% 40%,
+        rgba(124, 106, 247, 0) 0%,
+        rgba(124, 106, 247, 0) 100%);
     }
 
-    /* ── Stats row ── */
+    /* ── Stats ── */
     .stats-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -166,28 +244,19 @@
       max-width: 480px;
       margin-bottom: 16px;
     }
-
     .stat-card {
       background: var(--surface);
       border: 1px solid var(--surface2);
       border-radius: var(--radius);
       padding: 18px 20px;
     }
-
     .stat-card .val {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--accent);
-      line-height: 1;
-      margin-bottom: 4px;
+      font-size: 2rem; font-weight: 700;
+      color: var(--accent); line-height: 1; margin-bottom: 4px;
     }
-
     .stat-card .lbl {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
+      font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
     }
 
     /* ── Audio card ── */
@@ -200,59 +269,27 @@
       padding: 20px;
       margin-bottom: 16px;
     }
-
     .audio-card .section-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 14px;
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); margin-bottom: 14px;
     }
-
-    .track-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .track-row .track-icon {
-      font-size: 1.6rem;
-      flex-shrink: 0;
-    }
-
+    .track-row { display: flex; align-items: center; gap: 12px; }
+    .track-row .track-icon { font-size: 1.6rem; flex-shrink: 0; }
     .track-info { flex: 1; min-width: 0; }
-
     .track-info .track-name {
-      font-size: 0.92rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 0.92rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-
-    .track-info .track-sub {
-      font-size: 0.76rem;
-      color: var(--muted);
-    }
-
+    .track-info .track-sub { font-size: 0.76rem; color: var(--muted); }
     .enable-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--surface2);
-      border: 1px solid var(--surface2);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 9px 16px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--surface2);
+      color: var(--text); border-radius: 10px; padding: 9px 16px;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
       transition: background 0.2s, border-color 0.2s;
-      white-space: nowrap;
-      flex-shrink: 0;
+      white-space: nowrap; flex-shrink: 0;
     }
-
     .enable-btn:hover { background: #2e2e38; border-color: var(--accent); }
     .enable-btn.active { border-color: var(--green); color: var(--green); }
 
@@ -266,90 +303,53 @@
       padding: 20px;
       margin-bottom: 16px;
     }
-
     .test-card .section-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 14px;
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); margin-bottom: 14px;
     }
-
     .test-btn {
-      width: 100%;
-      padding: 14px;
+      width: 100%; padding: 14px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 0.92rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
+      color: white; border: none; border-radius: 12px;
+      font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em;
+      cursor: pointer; transition: opacity 0.2s, transform 0.1s;
     }
-
     .test-btn:hover { opacity: 0.88; }
     .test-btn:active { transform: scale(0.98); }
 
     /* ── Alert overlay ── */
     #alert-overlay {
       display: none;
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(0,0,0,0.85);
       z-index: 100;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      text-align: center;
-      padding: 32px;
+      flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px;
+      text-align: center; padding: 32px;
     }
-
     #alert-overlay.show { display: flex; }
-
     #alert-overlay .alert-icon { font-size: 4rem; animation: bounce 0.6s infinite alternate; }
-
     @keyframes bounce {
       from { transform: translateY(0); }
       to   { transform: translateY(-12px); }
     }
-
-    #alert-overlay h2 {
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      color: #fff;
-    }
-
-    #alert-overlay p { color: #ccc; font-size: 0.95rem; }
-
+    #alert-overlay h2 { font-size: 2rem; font-weight: 800; letter-spacing: 0.02em; color: #fff; }
+    #alert-overlay p  { color: #ccc; font-size: 0.95rem; }
+    #alert-source     { font-size: 0.75rem; color: var(--muted); margin-top: -8px; }
     .dismiss-btn {
-      margin-top: 8px;
-      padding: 13px 36px;
-      background: var(--accent2);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: opacity 0.2s;
+      margin-top: 8px; padding: 13px 36px;
+      background: var(--accent2); color: white; border: none;
+      border-radius: 12px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s;
     }
-
     .dismiss-btn:hover { opacity: 0.85; }
 
-    /* ── Footer note ── */
+    /* ── Footer ── */
     .footer-note {
-      width: 100%;
-      max-width: 480px;
-      font-size: 0.73rem;
-      color: var(--muted);
-      line-height: 1.6;
-      text-align: center;
-      margin-top: 8px;
+      width: 100%; max-width: 480px;
+      font-size: 0.73rem; color: var(--muted);
+      line-height: 1.6; text-align: center; margin-top: 8px;
     }
 
     /* ── TRIGGERED state overrides ── */
@@ -361,7 +361,7 @@
 </head>
 <body>
 
-  <!-- Strobe flash overlay -->
+  <!-- Ambient strobe overlay (radial glow, not flat flash) -->
   <div id="strobe-overlay"></div>
 
   <!-- Alert overlay -->
@@ -369,6 +369,7 @@
     <div class="alert-icon">👶</div>
     <h2>Cry detected — rocking now</h2>
     <p>The cradle is responding. Lullaby is playing.</p>
+    <p id="alert-source"></p>
     <button class="dismiss-btn" onclick="dismissAlert()">Dismiss</button>
   </div>
 
@@ -380,6 +381,18 @@
       <span id="conn-label">Connecting…</span>
     </div>
   </header>
+
+  <!--
+    ── Realtime replication warning banner ──
+    Shown when:
+      • Supabase channel errors out (CHANNEL_ERROR / CLOSED)
+      • SUBSCRIBED but table replication not toggled on in dashboard
+    Hidden by default; JS shows it as needed.
+  -->
+  <div id="rt-banner">
+    <strong id="rt-banner-title">Realtime not receiving events</strong>
+    <span id="rt-banner-body"></span>
+  </div>
 
   <!-- Main status card -->
   <div class="main-card" id="main-card">
@@ -415,14 +428,42 @@
         <div class="track-name">Lullaby — Auto-play on cry</div>
         <div class="track-sub" id="audio-status">Audio not yet enabled</div>
       </div>
-      <button class="enable-btn" id="enable-btn" onclick="enableAudio()">
-        ♪ Enable
-      </button>
+      <button class="enable-btn" id="enable-btn" onclick="enableAudio()">♪ Enable</button>
     </div>
-    <!-- Embedded base64 audio so it works offline too -->
+    <!--
+      Replace the src with a real base64-encoded MP3 for true offline playback.
+      The stub below is a valid but silent audio header — it will not produce sound.
+      To encode your own lullaby: btoa(binaryString) in Node or use an online tool.
+    -->
     <audio id="lullaby" loop
       src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//sQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV">
     </audio>
+  </div>
+
+  <!--
+    ── Local ESP32 polling fallback ──
+    Enter the ESP32's local IP (shown on its LCD and Serial monitor).
+    When connected, the UI polls /check every 500 ms and triggers
+    on state === "TRIGGERED" — useful when:
+      • You're on the Tharattu_AP hotspot (no Supabase access)
+      • Supabase Realtime is down or not yet configured
+    Events from either source trigger the same UI response.
+  -->
+  <div class="config-card">
+    <div class="section-label">Local ESP32 fallback</div>
+    <div class="config-row">
+      <input
+        type="text"
+        id="esp-ip-input"
+        placeholder="e.g. 192.168.4.1 or 192.168.1.42"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="connect-btn" id="local-connect-btn" onclick="toggleLocalPolling()">
+        Connect
+      </button>
+    </div>
+    <div id="local-status">Not connected — enter ESP32 IP above</div>
   </div>
 
   <!-- Manual test -->
@@ -433,112 +474,291 @@
 
   <!-- Footer -->
   <p class="footer-note">
-    Connects to Supabase Realtime for live cry events from the ESP32.
-    Lullaby is embedded as base64 — playback and the alert screen work even with no internet.
+    Supabase Realtime is the primary event source. Local polling is the fallback
+    when on the ESP32's own AP or when cloud sync is unavailable.
+    Lullaby is embedded as base64 — replace the stub src with a real MP3 for offline audio.
   </p>
 
 <script>
   // =============================================
-  // SUPABASE CONFIG — replace these two values
+  // CONFIG — replace before deploying
   // =============================================
-  const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+  const SUPABASE_URL      = "https://YOUR_PROJECT.supabase.co";
   const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+
+  // How long after SUBSCRIBED with no event before
+  // showing the replication hint banner (ms).
+  const REPLICATION_HINT_DELAY = 12000;
+
+  // Local polling interval (ms)
+  const LOCAL_POLL_INTERVAL = 500;
 
   // =============================================
   // STATE
   // =============================================
-  let audioEnabled = false;
-  let rocksToday = 0;
-  let isTriggered = false;
+  let audioEnabled   = false;
+  let rocksToday     = 0;
+  let isTriggered    = false;
+  let resetTimerId   = null;   // tracks the auto-reset setTimeout so it can be cancelled
   let strobeInterval = null;
-  let supabase = null;
+  let supabaseClient = null;
+
+  // Local polling
+  let localPollTimer    = null;
+  let localPollingActive = false;
+  let localEspIp        = "";
+
+  // Realtime watchdog — fires if SUBSCRIBED but no
+  // event arrives within REPLICATION_HINT_DELAY
+  let replicationWatchdog = null;
 
   // =============================================
-  // SUPABASE INIT & REALTIME
+  // SUPABASE REALTIME
   // =============================================
   function initSupabase() {
     if (SUPABASE_URL === "https://YOUR_PROJECT.supabase.co") {
-      // Running without config — fall back gracefully
-      setConnStatus(false, "No config");
+      setConnStatus("none", "No Supabase config");
+      showBanner(
+        "warn",
+        "Supabase not configured",
+        "Edit SUPABASE_URL and SUPABASE_ANON_KEY in the script, then reload. " +
+        "Use local ESP32 polling below as a fallback in the meantime."
+      );
       return;
     }
 
     try {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      supabase
+      supabaseClient
         .channel("baby-events")
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "baby_events" },
           (payload) => {
-            console.log("Realtime event:", payload.new);
+            // Clear replication watchdog — events ARE arriving
+            clearTimeout(replicationWatchdog);
+            hideBanner();
             if (payload.new.event_type === "CRY") {
-              triggerCryUI();
+              triggerCryUI("Supabase Realtime");
             }
           }
         )
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
-            setConnStatus(true, "Live");
-          } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-            setConnStatus(false, "Disconnected");
+            setConnStatus("live", "Supabase live");
+
+            // Start watchdog: if no event arrives soon after subscribing,
+            // the table replication is probably not enabled in the dashboard.
+            replicationWatchdog = setTimeout(() => {
+              showBanner(
+                "warn",
+                "No events received yet",
+                "Check: Database → Replication → supabase_realtime → enable baby_events table. " +
+                "Also confirm the ESP32 is running and Wi-Fi is connected."
+              );
+            }, REPLICATION_HINT_DELAY);
+
+          } else if (status === "CHANNEL_ERROR") {
+            clearTimeout(replicationWatchdog);
+            setConnStatus("error", "Realtime error");
+            showBanner(
+              "error",
+              "Realtime channel error",
+              "Could not subscribe to baby_events. Check your anon key and RLS policies " +
+              "(SELECT must be allowed for anon). Local polling fallback below still works."
+            );
+          } else if (status === "CLOSED") {
+            clearTimeout(replicationWatchdog);
+            setConnStatus("error", "Disconnected");
+            showBanner(
+              "warn",
+              "Realtime disconnected",
+              "WebSocket closed. Reload to reconnect, or use local ESP32 polling."
+            );
           }
         });
+
     } catch (e) {
       console.error("Supabase init failed:", e);
-      setConnStatus(false, "Error");
+      setConnStatus("error", "Init error");
+      showBanner("error", "Supabase init failed", e.message);
     }
   }
 
-  function setConnStatus(live, label) {
-    document.getElementById("conn-dot").className = "dot" + (live ? " live" : "");
-    document.getElementById("conn-label").textContent = label;
+  // ── Connection pill ──
+  // mode: "live" | "local" | "warn" | "error" | "none"
+  function setConnStatus(mode, label) {
+    const dot   = document.getElementById("conn-dot");
+    const lbl   = document.getElementById("conn-label");
+    dot.className = "dot" + (mode !== "none" ? " " + mode : "");
+    lbl.textContent = label;
+  }
+
+  // ── Realtime banner ──
+  function showBanner(type, title, body) {
+    const el = document.getElementById("rt-banner");
+    el.className = "rt-banner show" + (type === "error" ? " error" : "");
+    document.getElementById("rt-banner-title").textContent = title;
+    document.getElementById("rt-banner-body").textContent  = body;
+  }
+  function hideBanner() {
+    document.getElementById("rt-banner").classList.remove("show");
+  }
+
+  // =============================================
+  // LOCAL ESP32 POLLING FALLBACK
+  // Polls GET http://<ip>/check expecting JSON:
+  //   { "state": "IDLE"|"TRIGGERED"|"ESTOP", "level": <int> }
+  // Falls back to plain text "TRIGGERED" / "IDLE"
+  // for compatibility with older firmware.
+  // =============================================
+  function toggleLocalPolling() {
+    if (localPollingActive) {
+      stopLocalPolling();
+    } else {
+      const ip = document.getElementById("esp-ip-input").value.trim();
+      if (!ip) {
+        document.getElementById("local-status").textContent = "Enter an IP address first.";
+        return;
+      }
+      startLocalPolling(ip);
+    }
+  }
+
+  function startLocalPolling(ip) {
+    localEspIp        = ip;
+    localPollingActive = true;
+
+    const btn = document.getElementById("local-connect-btn");
+    btn.textContent = "Disconnect";
+    btn.classList.add("active");
+    document.getElementById("local-status").textContent = "Connecting to " + ip + "…";
+
+    pollEsp32();   // immediate first poll
+    localPollTimer = setInterval(pollEsp32, LOCAL_POLL_INTERVAL);
+  }
+
+  function stopLocalPolling() {
+    clearInterval(localPollTimer);
+    localPollTimer    = null;
+    localPollingActive = false;
+
+    const btn = document.getElementById("local-connect-btn");
+    btn.textContent = "Connect";
+    btn.classList.remove("active");
+    document.getElementById("local-status").textContent = "Disconnected.";
+
+    // Revert conn pill only if Supabase is not live
+    if (!supabaseClient) setConnStatus("none", "No Supabase config");
+  }
+
+  function pollEsp32() {
+    // Use a short timeout so a slow ESP32 doesn't stack up requests
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), 1200);
+
+    fetch("http://" + localEspIp + "/check", { signal: controller.signal })
+      .then((r) => {
+        clearTimeout(timeout);
+        return r.text();
+      })
+      .then((text) => {
+        let state = "IDLE";
+        let level = null;
+
+        // Try JSON first (updated firmware), fall back to plain text
+        try {
+          const data = JSON.parse(text);
+          state = data.state  ?? "IDLE";
+          level = data.level  ?? null;
+        } catch {
+          state = text.trim();
+        }
+
+        // Update mic level stat if available
+        if (level !== null) {
+          document.getElementById("mic-val").textContent = level;
+        }
+
+        // Update local status line
+        document.getElementById("local-status").textContent =
+          "ESP32 @ " + localEspIp + " — " + state +
+          (level !== null ? "  |  level: " + level : "");
+
+        // Update pill to show local is active (unless Supabase is already live)
+        const currentLabel = document.getElementById("conn-label").textContent;
+        if (!currentLabel.includes("live")) {
+          setConnStatus("local", "Local polling");
+        }
+
+        if (state === "TRIGGERED") {
+          triggerCryUI("Local ESP32 (" + localEspIp + ")");
+        }
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        if (err.name !== "AbortError") {
+          document.getElementById("local-status").textContent =
+            "Unreachable — check IP and that ESP32 is on same network.";
+        }
+      });
   }
 
   // =============================================
   // CRY TRIGGER
+  // source: string describing where the event came from
   // =============================================
-  function triggerCryUI() {
-    if (isTriggered) return;
-    isTriggered = true;
-    rocksToday++;
+  function triggerCryUI(source) {
+    // ── Fix: cancel any pending stale auto-reset before retriggering ──
+    if (resetTimerId !== null) {
+      clearTimeout(resetTimerId);
+      resetTimerId = null;
+    }
 
-    document.getElementById("rocks-val").textContent = rocksToday;
+    // If already triggered, just refresh the reset timer
+    // (handles rapid re-triggers without double-counting rocks)
+    if (!isTriggered) {
+      isTriggered = true;
+      rocksToday++;
+      document.getElementById("rocks-val").textContent = rocksToday;
+    }
+
     document.getElementById("status-label").textContent = "KUNJU KARAYUNNU!";
-    document.getElementById("state-text").textContent = "Cry detected!";
-    document.getElementById("sub-text").textContent = "Cradle is rocking…";
-    document.getElementById("visual-icon").textContent = "😢";
-    document.getElementById("mic-val").textContent = "↑↑";
+    document.getElementById("state-text").textContent   = "Cry detected!";
+    document.getElementById("sub-text").textContent     = "Cradle is rocking…";
+    document.getElementById("visual-icon").textContent  = "😢";
 
     document.getElementById("main-card").classList.add("triggered");
     document.body.classList.add("triggered");
 
-    // Show alert overlay
+    // Show which source fired the event
+    document.getElementById("alert-source").textContent =
+      source ? "via " + source : "";
     document.getElementById("alert-overlay").classList.add("show");
 
-    // Start strobe
     startStrobe();
 
-    // Play lullaby
     if (audioEnabled) {
       const audio = document.getElementById("lullaby");
       if (audio.paused) audio.play().catch(() => {});
     }
 
-    // Auto-reset after 15 s (matches the ESP32 rocking window)
-    setTimeout(resetUI, 15000);
+    // Auto-reset after 15 s — store ID so it can be cancelled
+    resetTimerId = setTimeout(resetUI, 15000);
   }
 
   function resetUI() {
-    isTriggered = false;
+    isTriggered  = false;
+    resetTimerId = null;
+
     stopStrobe();
 
     document.getElementById("status-label").textContent = "Listening";
-    document.getElementById("state-text").textContent = "All quiet";
-    document.getElementById("sub-text").textContent = "Monitoring for sounds…";
-    document.getElementById("visual-icon").textContent = "🎵";
-    document.getElementById("mic-val").textContent = "—";
+    document.getElementById("state-text").textContent   = "All quiet";
+    document.getElementById("sub-text").textContent     = "Monitoring for sounds…";
+    document.getElementById("visual-icon").textContent  = "🎵";
+    document.getElementById("mic-val").textContent      = "—";
 
     document.getElementById("main-card").classList.remove("triggered");
     document.body.classList.remove("triggered");
@@ -549,37 +769,77 @@
   }
 
   function dismissAlert() {
+    // Cancel the stale auto-reset so it doesn't fire after the user
+    // has manually dismissed — they've acknowledged it.
+    if (resetTimerId !== null) {
+      clearTimeout(resetTimerId);
+      resetTimerId = null;
+    }
     document.getElementById("alert-overlay").classList.remove("show");
-    // Don't reset the full UI — cradle may still be rocking
+    // Leave the triggered UI state visible until the 15 s window
+    // would naturally have elapsed — schedule a soft reset from now.
+    resetTimerId = setTimeout(resetUI, 15000);
   }
 
   // =============================================
-  // STROBE EFFECT
+  // AMBIENT STROBE — radial gradient pulse
+  // Rather than flooding the screen with a flat
+  // colour, this projects a soft radial glow from
+  // a random position with backdrop-filter blur,
+  // giving a spatial "room lighting" effect.
   // =============================================
-  const strobeColors = [
-    "#ff4757", "#2ed573", "#1e90ff", "#ffeb3b",
-    "#ff6b81", "#7bed9f", "#70a1ff", "#eccc68"
+  const glowColors = [
+    "247,106,138",   // rose
+    "124,106,247",   // violet
+    "74,222,128",    // green
+    "251,191,36",    // amber
+    "96,165,250",    // blue
   ];
 
   function startStrobe() {
     const overlay = document.getElementById("strobe-overlay");
+    let tick = 0;
+
     strobeInterval = setInterval(() => {
-      const color = strobeColors[Math.floor(Math.random() * strobeColors.length)];
-      overlay.style.background = color;
-      overlay.style.opacity = "0.18";
-      setTimeout(() => { overlay.style.opacity = "0"; }, 80);
-    }, 180);
+      tick++;
+      const c   = glowColors[tick % glowColors.length];
+      // Randomise the glow origin slightly each tick
+      const ox  = 30 + Math.random() * 40;   // 30–70 % x
+      const oy  = 20 + Math.random() * 40;   // 20–60 % y
+      const r   = 55 + Math.random() * 25;   // 55–80 % radius
+
+      overlay.style.background =
+        `radial-gradient(ellipse ${r}% ${r}% at ${ox}% ${oy}%,
+          rgba(${c}, 0.22) 0%,
+          rgba(${c}, 0.08) 45%,
+          rgba(${c}, 0)    100%)`;
+
+      overlay.style.backdropFilter         = `blur(${2 + Math.random() * 3}px) brightness(1.08)`;
+      overlay.style.webkitBackdropFilter   = overlay.style.backdropFilter;
+      overlay.style.opacity = "1";
+
+      // Fade out before the next tick
+      setTimeout(() => {
+        overlay.style.opacity = "0";
+        overlay.style.backdropFilter       = "blur(0px) brightness(1)";
+        overlay.style.webkitBackdropFilter = "blur(0px) brightness(1)";
+      }, 140);
+
+    }, 280);   // slower interval feels more ambient than a rapid strobe
   }
 
   function stopStrobe() {
     clearInterval(strobeInterval);
     strobeInterval = null;
-    const overlay = document.getElementById("strobe-overlay");
-    overlay.style.opacity = "0";
+    const overlay  = document.getElementById("strobe-overlay");
+    overlay.style.opacity              = "0";
+    overlay.style.backdropFilter       = "blur(0px) brightness(1)";
+    overlay.style.webkitBackdropFilter = "blur(0px) brightness(1)";
+    overlay.style.background           = "none";
   }
 
   // =============================================
-  // AUDIO
+  // AUDIO UNLOCK
   // =============================================
   function enableAudio() {
     const audio = document.getElementById("lullaby");
@@ -588,9 +848,9 @@
         audio.pause();
         audio.currentTime = 0;
         audioEnabled = true;
-        document.getElementById("audio-status").textContent = "Ready — will play on cry";
+        document.getElementById("audio-status").textContent  = "Ready — will play on cry";
         document.getElementById("enable-btn").classList.add("active");
-        document.getElementById("enable-btn").textContent = "✓ Enabled";
+        document.getElementById("enable-btn").textContent    = "✓ Enabled";
       })
       .catch(() => {
         document.getElementById("audio-status").textContent = "Could not enable — try again";
@@ -598,10 +858,10 @@
   }
 
   // =============================================
-  // MANUAL TEST (simulate an ESP32 CRY event)
+  // MANUAL TEST
   // =============================================
   function simulateCry() {
-    triggerCryUI();
+    triggerCryUI("Manual test");
   }
 
   // =============================================
